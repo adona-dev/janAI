@@ -77,4 +77,4 @@ Clone the repository
 -AI-powered scheme recommendation for citizens
 
 #Purpose
-This project was created as an experimental AI civic assistant prototype and can be used as a foundation for building intelligent public service systems.
+ -This project was created as an experimental AI civic assistant prototype and can be used as a foundation for building intelligent public service systems.
