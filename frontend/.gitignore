@@ -1,6 +1,16 @@
-venv/
-node_modules/
+# Python
 __pycache__/
-.env
-backend/.env
 *.pyc
+venv/
+.env
+
+# Node / React
+node_modules/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
