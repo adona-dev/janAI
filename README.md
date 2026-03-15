@@ -55,19 +55,19 @@ AI Model (Groq LLM)
 #How to Run the Project
 
 Clone the repository
-git clone https://github.com/adona-dev/janAI.git
-Navigate to backend
-cd backend
-Install dependencies
-pip install -r requirements.txt
-Run backend server
-uvicorn main:app --reload
-Navigate to frontend
-cd frontend/react-app
-Install dependencies
-npm install
-Run React app
-npm start
+-git clone https://github.com/adona-dev/janAI.git
+-Navigate to backend
+-cd backend
+-Install dependencies
+-pip install -r requirements.txt
+-Run backend server
+-uvicorn main:app --reload
+-Navigate to frontend
+-cd frontend/react-app
+-Install dependencies
+-npm install
+-Run React app
+-npm start
 
 #Future Improvements
 
