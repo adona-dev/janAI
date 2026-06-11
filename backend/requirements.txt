@@ -7,3 +7,4 @@ pytesseract
 Pillow
 python-multipart
 pdfplumber
+python-docx
