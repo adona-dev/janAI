@@ -1,0 +1,25 @@
+# Python
+backend/venv/
+backend/__pycache__/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+backend/.env
+
+# Temp files
+backend/temp.pdf
+backend/temp.docx
+
+# Node
+node_modules/
+
+# VS Code
+.vscode/
+
+# Backups
+app_backup.css
+app_backup.js
+backup_index.css
+how torun.txt

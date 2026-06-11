@@ -1,348 +1,733 @@
 import { useState, useRef, useEffect } from "react";
 import "./App.css";
-
+import { supabase } from "./supabase";
+import ReactMarkdown from "react-markdown";
 function App() {
 
-  const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [file, setFile] = useState(null);
-  const [cameraOn, setCameraOn] = useState(false);
-  const [capturedImage, setCapturedImage] = useState(null);
+const [user, setUser] = useState(null);
+const [checkingAuth, setCheckingAuth] = useState(true);
+const [question, setQuestion] = useState("");
+const [loading, setLoading] = useState(false);
+const [conversationId, setConversationId] = useState(null);
+const [conversations, setConversations] = useState([]);
+const [file, setFile] = useState(null);
+const [documentText, setDocumentText] = useState("");
+const [sidebarOpen, setSidebarOpen] = useState(false);
+const [menuOpen, setMenuOpen] = useState(null);
+const [messages, setMessages] = useState([
+{
+sender: "ai",
+text: "Welcome to JanAI. Ask me anything."
+}
+]);
 
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const bottomRef = useRef(null);
+const chatEndRef = useRef(null);
 
-  /* AUTO SCROLL */
+useEffect(() => {
+chatEndRef.current?.scrollIntoView({
+behavior: "smooth"
+});
+}, [messages, loading]);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  const getUser = async () => {
 
-  /* VOICE INPUT */
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
 
-  const startVoice = () => {
+    setUser(session?.user || null);
+    setCheckingAuth(false);
+  };
+ 
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+  getUser();
 
-    if (!SpeechRecognition) {
-      alert("Voice recognition not supported");
-      return;
+  const {
+    data: { subscription }
+  } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      setUser(session?.user || null);
     }
+  );
 
-    const recognition = new SpeechRecognition();
+  return () => subscription.unsubscribe();
 
-    recognition.lang = "en-IN";
+}, []);
 
-    recognition.start();
+useEffect(() => {
 
-    recognition.onresult = (event) => {
+  if (!user) return;
 
-      const speech = event.results[0][0].transcript;
+  const loadConversations = async () => {
 
-      setQuestion(speech);
+    const { data, error } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
-    };
+    if (!error && data) {
+      setConversations(data);
+    }
 
   };
 
-  /* SEND QUESTION */
+  loadConversations();
 
-  const sendQuestion = async () => {
+}, [user]);
+const login = async () => {
 
-    if (!question) return;
+  await supabase.auth.signInWithOAuth({
+    provider: "google"
+  });
 
-    const userMessage = {
-      sender: "user",
-      text: question
-    };
+};
 
-    setMessages(prev => [...prev, userMessage]);
+const logout = async () => {
 
-    setLoading(true);
+  await supabase.auth.signOut();
 
-    try {
+};
+const createNewChat = async () => {
 
-      const response = await fetch("http://127.0.0.1:8000/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          question: question
-        })
-      });
+  setConversationId(null);
 
-      const data = await response.json();
-
-      setLoading(false);
-
-      /* STREAMING / TYPING EFFECT */
-
-      const fullText = data.response;
-
-      let index = 0;
-
-      let currentText = "";
-
-      const aiMessage = { sender: "ai", text: "" };
-
-      setMessages(prev => [...prev, aiMessage]);
-
-      const typing = setInterval(() => {
-
-        currentText += fullText[index];
-
-        index++;
-
-        setMessages(prev => {
-
-          const updated = [...prev];
-
-          updated[updated.length - 1] = {
-            sender: "ai",
-            text: currentText
-          };
-
-          return updated;
-
-        });
-
-        if (index >= fullText.length) {
-          clearInterval(typing);
-        }
-
-      }, 15);
-
-    } catch {
-
-      setLoading(false);
-
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: "ai",
-          text: "Error connecting to backend"
-        }
-      ]);
-
+  setMessages([
+    {
+      sender: "ai",
+      text: "Welcome to JanAI. Ask me anything."
     }
+  ]);
+  setSidebarOpen(false);
 
-    setQuestion("");
+};
+const loadConversation = async (conversationId) => {
 
-  };
+  setConversationId(conversationId);
+  setSidebarOpen(false);
 
-  /* OCR DOCUMENT UPLOAD */
+  const { data, error } = await supabase
+    .from("chats")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
 
-  const uploadDocument = async () => {
+  if (!error && data) {
 
-    if (!file) {
-      alert("Please choose a file");
-      return;
-    }
+    setMessages(
+      data.map(msg => ({
+        sender: msg.sender,
+        text: msg.message
+      }))
+    );
 
-    const formData = new FormData();
+  }
 
-    formData.append("file", file);
+};
+const deleteConversation = async (id) => {
 
-    const response = await fetch("http://127.0.0.1:8000/upload-document", {
-      method: "POST",
-      body: formData
-    });
+  if (
+    !window.confirm(
+      "Delete this conversation?"
+    )
+  ) {
+    return;
+  }
 
-    const data = await response.json();
+const { error: chatsError } =
+  await supabase
+    .from("chats")
+    .delete()
+    .eq("conversation_id", id);
 
-    setMessages(prev => [
-      ...prev,
+console.log("Chats delete:", chatsError);
+
+const { error: convError } =
+  await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", id);
+
+console.log("Conversation delete:", convError);
+
+  setConversations(prev =>
+    prev.filter(chat => chat.id !== id)
+  );
+
+  if (conversationId === id) {
+
+    setMessages([
       {
         sender: "ai",
-        text: "Extracted text:\n" + data.extracted_text
+        text:
+          "Welcome to JanAI. Ask me anything."
       }
     ]);
 
-  };
+    setConversationId(null);
 
-  /* CAMERA */
+  }
 
-  const startCamera = async () => {
+};
+const renameConversation = async (id) => {
 
-    try {
+  const newTitle =
+    prompt("Enter new chat name");
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true
-      });
+  if (!newTitle) return;
 
-      streamRef.current = stream;
+  await supabase
+    .from("conversations")
+    .update({
+      title: newTitle
+    })
+    .eq("id", id);
 
-      setCameraOn(true);
+  setConversations(prev =>
+    prev.map(chat =>
+      chat.id === id
+        ? {
+            ...chat,
+            title: newTitle
+          }
+        : chat
+    )
+  );
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+};
+const uploadDoc = async () => {
+
+  if (!file) {
+    alert("Please select a file first");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+
+    const response = await fetch(
+      "http://localhost:8000/upload-document",
+      {
+        method: "POST",
+        body: formData
       }
+    );
 
-    } catch {
+    const data = await response.json();
+    console.log(data);
 
-      alert("Camera access denied");
+    setDocumentText(data.extracted_text || "");
 
+setMessages(prev => [
+  ...prev,
+  {
+    sender: "ai",
+    text:
+      `📄 Document uploaded successfully
+
+JanAI has extracted the document text and is ready to answer questions.
+
+Try asking:
+• Summarize this document
+• What are the important points?
+• Explain this form`
+  }
+]);
+
+console.log("OCR TEXT:", data.extracted_text);
+
+  } catch (error) {
+  console.error(error);
+  alert("Document upload failed");
+}
+
+};
+
+const sendQuestion = async () => {
+
+
+if (!question.trim()) return;
+
+const userQuestion = question;
+let currentId = conversationId;
+
+if (!currentId) {
+  currentId = crypto.randomUUID();
+
+  setConversationId(currentId);
+
+  await supabase
+    .from("conversations")
+    .insert([
+      {
+        id: currentId,
+        user_id: user.id,
+        title: userQuestion.substring(0, 50)
+      }
+    ]);
+
+  setConversations(prev => [
+    {
+      id: currentId,
+      title: userQuestion.substring(0, 50)
+    },
+    ...prev
+  ]);
+}
+  
+console.log("SEND START");
+console.log("conversationId =", currentId);
+console.log("question =", userQuestion);
+const currentConversation =
+  conversations.find(
+    c => c.id === currentId
+  );
+  console.log("Current conversation:", currentConversation);
+
+console.log(
+  "Conversation IDs:",
+  conversations.map(c => c.id)
+);
+
+
+
+setMessages(prev => [
+  ...prev,
+  {
+    sender: "user",
+    text: userQuestion
+  }
+]);
+await supabase
+  .from("chats")
+  .insert([
+    {
+      conversation_id: currentId,
+      user_id: user.id,
+      sender: "user",
+      message: userQuestion
     }
+  ]);
+  
+console.log("Conversation ID:", currentId);
+console.log("Current conversation:", currentConversation);
+console.log("All conversations:", conversations);
 
-  };
+if (
+  currentConversation &&
+  currentConversation.title === "New Chat"
+) {
 
-  const capturePhoto = () => {
+  const newTitle =
+  userQuestion.substring(0, 50);
 
-    const video = videoRef.current;
+const { data, error } = await supabase
+  .from("conversations")
+  .update({
+    title: newTitle
+  })
+  .eq("id", currentId)
+  .select();
 
-    const canvas = canvasRef.current;
+console.log("Updated rows:", data);
+console.log("Update error:", error);
+console.log("Conversation ID:", currentId);
+console.log("Current conversation:", currentConversation);
+console.log("TITLE UPDATE DATA:", data);
+console.log("TITLE UPDATE ERROR:", error);
 
-    canvas.width = video.videoWidth;
+  setConversations(prev =>
+    prev.map(chat =>
+      chat.id === currentId
+        ? {
+            ...chat,
+            title: newTitle
+          }
+        : chat
+    )
+  );
 
-    canvas.height = video.videoHeight;
+}
+   setQuestion("");
+setLoading(true);
 
-    const ctx = canvas.getContext("2d");
+try {
 
-    ctx.drawImage(video, 0, 0);
+  console.log("Sending document text:", documentText);
 
-    const imageData = canvas.toDataURL("image/png");
+  const response = await fetch(
+    "http://127.0.0.1:8000/chat",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+  question: userQuestion,
+  document_text: documentText,
+  history: messages
+})
+    }
+  );
 
-    setCapturedImage(imageData);
+  const data = await response.json();
 
-    streamRef.current.getTracks().forEach(track => track.stop());
+  setMessages(prev => [
+    ...prev,
+    {
+      sender: "ai",
+      text: data.response
+    }
+  ]);
+  await supabase
+  .from("chats")
+  .insert([
+    {
+      conversation_id: currentId,
+      user_id: user.id,
+      sender: "ai",
+      message: data.response
+    }
+  ]);
+ 
 
-    setCameraOn(false);
+} catch (error) {
 
-  };
+  setMessages(prev => [
+    ...prev,
+    {
+      sender: "ai",
+      text: "Unable to connect to JanAI backend."
+    }
+  ]);
+ 
+
+} finally {
+
+  setLoading(false);
+
+}
+
+
+};
+if (checkingAuth) {
+
+  return (
+    <div className="login">
+      Loading...
+    </div>
+  );
+
+}
+
+if (!user) {
 
   return (
 
-    <div className="app">
+    <div className="login">
 
-      {/* SIDEBAR */}
+      <h1>JanAI</h1>
 
-      <div className="side-panel">
+      <p>AI Civic Assistant for Kerala</p>
 
-        <h2>JanAI</h2>
-
-        <h3>Upload Document</h3>
-
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files[0])}
-        />
-
-        <button onClick={uploadDocument}>
-          Upload & Scan
-        </button>
-
-        <hr />
-
-        <h3>Scan Document</h3>
-
-        {!cameraOn && (
-
-          <button onClick={startCamera}>
-            Open Camera
-          </button>
-
-        )}
-
-        <div className="camera-box">
-
-          {cameraOn && (
-
-            <video
-              ref={videoRef}
-              autoPlay
-              className="camera-preview"
-            />
-
-          )}
-
-          {capturedImage && (
-
-            <img
-              src={capturedImage}
-              alt="captured"
-              className="captured-image"
-            />
-
-          )}
-
-        </div>
-
-        {cameraOn && (
-
-          <button onClick={capturePhoto}>
-            Capture Photo
-          </button>
-
-        )}
-
-        <canvas
-          ref={canvasRef}
-          style={{ display: "none" }}
-        />
-
-      </div>
-
-      {/* CHAT AREA */}
-
-      <div className="chat-container">
-
-        <div className="chat-box">
-
-          {messages.map((msg, index) => (
-
-            <div key={index} className={msg.sender}>
-
-              {msg.text.split("\n").map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-
-            </div>
-
-          ))}
-
-          {loading && (
-
-            <div className="ai typing">
-              JanAI is thinking...
-            </div>
-
-          )}
-
-          <div ref={bottomRef}></div>
-
-        </div>
-
-        {/* INPUT BAR */}
-
-        <div className="input-box">
-
-          <input
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask about Kerala services..."
-          />
-
-          <button onClick={startVoice}>
-            🎤
-          </button>
-
-          <button onClick={sendQuestion}>
-            Send
-          </button>
-
-        </div>
-
-      </div>
+      <button
+        className="primaryBtn"
+        onClick={login}
+      >
+        Login with Google
+      </button>
 
     </div>
 
   );
 
+}
+
+return ( <div className="app">
+
+
+  <aside
+  className={
+    sidebarOpen
+      ? "sidebar open"
+      : "sidebar"
+  }
+>
+  <button
+  className="closeBtn"
+  onClick={() => setSidebarOpen(false)}
+>
+  ✕
+</button>
+
+    <div className="logo">
+      <h2>JanAI</h2>
+      <p>AI Civic Assistant</p>
+    </div>
+
+    <button
+  className="primaryBtn"
+  onClick={createNewChat}
+>
+  + New Chat
+</button>
+
+   <div className="card">
+
+  <h4>📄 Upload Document</h4>
+
+  <input
+    type="file"
+    onChange={(e) =>
+      setFile(e.target.files[0])
+    }
+  />
+
+  <button
+    className="primaryBtn"
+    onClick={uploadDoc}
+  >
+    Upload
+  </button>
+
+</div>
+
+
+    <div className="history">
+
+  <h4>Recent Chats</h4>
+
+  {conversations.map(chat => (
+
+  <div
+    key={chat.id}
+    className="historyItem"
+  >
+
+    <div
+  style={{
+    display: "flex",
+    gap: "10px",
+    alignItems: "center"
+  }}
+>
+
+  <span
+    onClick={() =>
+      loadConversation(chat.id)
+    }
+  >
+    {chat.title}
+  </span>
+
+</div>
+
+<div>
+
+  <div className="chatMenu">
+
+  <button
+    className="menuDots"
+    onClick={() =>
+      setMenuOpen(
+        menuOpen === chat.id
+          ? null
+          : chat.id
+      )
+    }
+  >
+    ⋮
+  </button>
+
+  {menuOpen === chat.id && (
+    <div className="menuDropdown">
+
+      <button
+        onClick={() => {
+          renameConversation(chat.id);
+          setMenuOpen(null);
+        }}
+      >
+        ✏️ Rename
+      </button>
+
+      <button
+        onClick={() => {
+          deleteConversation(chat.id);
+          setMenuOpen(null);
+        }}
+      >
+        🗑️ Delete
+      </button>
+
+    </div>
+  )}
+
+</div>
+
+</div>
+
+  </div>
+
+))}
+
+</div>
+
+    <button
+  className="logoutBtn"
+  onClick={logout}
+>
+  Logout
+</button>
+
+  </aside>
+
+  <main className="main">
+
+    <div className="header">
+
+  <button
+    className="menuBtn"
+    onClick={() => setSidebarOpen(true)}
+  >
+    ☰
+  </button>
+
+  <div>
+    <h2>JanAI Assistant</h2>
+    <p className="headerSub">
+      AI Civic Assistant for Kerala
+    </p>
+  </div>
+
+</div>
+
+   <div className="chat">
+    {messages.length === 1 &&
+ messages[0].sender === "ai" && (
+
+<div className="welcomeCenter">
+
+  <h1>👋 Welcome to JanAI</h1>
+
+  <p>
+    Your AI Civic Assistant for Kerala
+  </p>
+
+  <div className="welcomeCards">
+
+    <div className="welcomeCard">
+      🏛️ Government Schemes
+    </div>
+
+    <div className="welcomeCard">
+      📄 Documents & Forms
+    </div>
+
+    <div className="welcomeCard">
+      🪪 Certificates
+    </div>
+
+    <div className="welcomeCard">
+      🚍 Public Services
+    </div>
+
+  </div>
+
+</div>
+
+)}
+
+  {messages
+  .filter((m, i) => {
+    return !(
+      messages.length === 1 &&
+      i === 0 &&
+      m.sender === "ai"
+    );
+  })
+  .map((m, i) => ( 
+
+    <div
+      key={i}
+      className={`msg ${m.sender}`}
+    >
+
+      <div className="msgBubble">
+
+  {m.text
+    .replace(/\*\*/g, "")
+    .split("\n")
+    .map((line, index) => (
+      <p key={index}>{line}</p>
+  ))}
+
+  {m.sender === "ai" && (
+
+          <span
+            className="copyBtn"
+            onClick={() =>
+              navigator.clipboard.writeText(m.text)
+            }
+          >
+            📋
+          </span>
+
+        )}
+
+      </div>
+
+    </div>
+
+  ))}
+
+      {loading && (
+
+        <div className="msg ai">
+
+          <div className="msgBubble">
+            JanAI is typing...
+          </div>
+
+        </div>
+
+      )}
+
+      <div ref={chatEndRef}></div>
+
+    </div>
+
+    <div className="inputArea">
+
+      <input
+        value={question}
+        onChange={(e) =>
+          setQuestion(e.target.value)
+        }
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            sendQuestion();
+          }
+        }}
+        placeholder="Ask JanAI..."
+      />
+
+      <button onClick={sendQuestion}>
+        Send
+      </button>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+);
 }
 
 export default App;
