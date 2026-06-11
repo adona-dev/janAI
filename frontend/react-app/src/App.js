@@ -211,7 +211,7 @@ const uploadDoc = async () => {
   try {
 
     const response = await fetch(
-      "http://localhost:8000/upload-document",
+      "https://janai-rvw6.onrender.com/upload-document",
       {
         method: "POST",
         body: formData
