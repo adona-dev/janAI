@@ -1,7 +1,8 @@
+// redeploy trigger
 import { useState, useRef, useEffect } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
-import ReactMarkdown from "react-markdown";
+
 function App() {
 
 const [user, setUser] = useState(null);
@@ -360,7 +361,7 @@ try {
   console.log("Sending document text:", documentText);
 
   const response = await fetch(
-    "http://127.0.0.1:8000/chat",
+    "https://janai-rvw6.onrender.com/chat",
     {
       method: "POST",
       headers: {
