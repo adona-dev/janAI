@@ -210,6 +210,8 @@ const uploadDoc = async () => {
 
   try {
 
+    console.log("Uploading:", file.name);
+
     const response = await fetch(
       "https://janai-rvw6.onrender.com/upload-document",
       {
@@ -218,17 +220,24 @@ const uploadDoc = async () => {
       }
     );
 
+    console.log("Status:", response.status);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     const data = await response.json();
-    console.log(data);
+
+    console.log("UPLOAD RESPONSE:", data);
 
     setDocumentText(data.extracted_text || "");
 
-setMessages(prev => [
-  ...prev,
-  {
-    sender: "ai",
-    text:
-      `📄 Document uploaded successfully
+    setMessages(prev => [
+      ...prev,
+      {
+        sender: "ai",
+        text:
+          `📄 Document uploaded successfully
 
 JanAI has extracted the document text and is ready to answer questions.
 
@@ -236,15 +245,18 @@ Try asking:
 • Summarize this document
 • What are the important points?
 • Explain this form`
-  }
-]);
-
-console.log("OCR TEXT:", data.extracted_text);
+      }
+    ]);
 
   } catch (error) {
-  console.error(error);
-  alert("Document upload failed");
-}
+
+    console.error("UPLOAD ERROR:", error);
+
+    alert(
+      "Document upload failed.\nCheck browser console."
+    );
+
+  }
 
 };
 
