@@ -69,9 +69,9 @@ async def upload_document(file: UploadFile = File(...)):
 
     # PDF Support
     if file.filename.endswith(".pdf"):
-    contents = await file.read()
+      contents = await file.read()
 
-    return {
+      return {
         "message": "PDF received",
         "size": len(contents)
     }
