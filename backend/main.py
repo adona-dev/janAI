@@ -69,12 +69,15 @@ async def upload_document(file: UploadFile = File(...)):
 
     # PDF Support
     if file.filename.endswith(".pdf"):
-     contents = await file.read()
+    contents = await file.read()
+
+    with open("temp.pdf", "wb") as f:
+        f.write(contents)
 
     with pdfplumber.open("temp.pdf") as pdf:
-     return {
-        "pages": len(pdf.pages)
-    }
+        return {
+            "pages": len(pdf.pages)
+        }
 
     # Image Support
     if file.content_type.startswith("image/"):
