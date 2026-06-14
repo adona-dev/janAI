@@ -71,11 +71,9 @@ async def upload_document(file: UploadFile = File(...)):
     if file.filename.endswith(".pdf"):
      contents = await file.read()
 
-    with open("temp.pdf", "wb") as f:
-        f.write(contents)
-
-    return {
-        "message": "PDF saved successfully"
+    with pdfplumber.open("temp.pdf") as pdf:
+     return {
+        "pages": len(pdf.pages)
     }
 
     # Image Support
