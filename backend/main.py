@@ -71,10 +71,10 @@ async def upload_document(file: UploadFile = File(...)):
     if file.filename.endswith(".pdf"):
      contents = await file.read()
 
-    with open("temp.pdf", "wb") as f:
+     with open("temp.pdf", "wb") as f:
         f.write(contents)
 
-    with pdfplumber.open("temp.pdf") as pdf:
+     with pdfplumber.open("temp.pdf") as pdf:
         return {
             "pages": len(pdf.pages)
         }
