@@ -4,13 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from ai_engine import ask_civic_ai
 from ocr_reader import extract_text_from_image_base64
 from docx import Document
+from typing import List
+
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
 from PIL import Image
 import pdfplumber
 import io
+
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
 
 app = FastAPI()
 
@@ -24,16 +27,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from typing import List
 
 class Question(BaseModel):
     question: str
     document_text: str = ""
     history: List[dict] = []
 
+
 @app.get("/")
 def home():
     return {"message": "JanAI backend is running"}
+
 
 @app.post("/chat")
 def chat(q: Question):
@@ -42,7 +46,11 @@ def chat(q: Question):
         q.document_text or "",
         q.history
     )
-    return {"response": answer}
+
+    return {
+        "response": answer
+    }
+
 
 @app.post("/upload-document")
 async def upload_document(file: UploadFile = File(...)):
@@ -69,14 +77,24 @@ async def upload_document(file: UploadFile = File(...)):
 
     # PDF Support
     if file.filename.endswith(".pdf"):
-     contents = await file.read()
 
-     with open("temp.pdf", "wb") as f:
-        f.write(contents)
+        contents = await file.read()
 
-     with pdfplumber.open("temp.pdf") as pdf:
+        with open("temp.pdf", "wb") as f:
+            f.write(contents)
+
+        text = ""
+
+        with pdfplumber.open("temp.pdf") as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+
+                if page_text:
+                    text += page_text + "\n"
+
         return {
-            "pages": len(pdf.pages)
+            "message": "PDF processed successfully",
+            "extracted_text": text
         }
 
     # Image Support
@@ -98,13 +116,20 @@ async def upload_document(file: UploadFile = File(...)):
         "extracted_text": ""
     }
 
+
 @app.post("/scan-image")
 async def scan_image(data: dict = Body(...)):
     try:
         image_data = data["image"].split(",")[1]
+
         text = extract_text_from_image_base64(image_data)
-        return {"extracted_text": text}
+
+        return {
+            "extracted_text": text
+        }
+
     except Exception as e:
-        return {"extracted_text": "Error reading image", "error": str(e)}
-    
-    
+        return {
+            "extracted_text": "Error reading image",
+            "error": str(e)
+        }
