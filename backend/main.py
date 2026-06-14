@@ -69,7 +69,7 @@ async def upload_document(file: UploadFile = File(...)):
 
     # PDF Support
     if file.filename.endswith(".pdf"):
-    contents = await file.read()
+     contents = await file.read()
 
     with open("temp.pdf", "wb") as f:
         f.write(contents)
