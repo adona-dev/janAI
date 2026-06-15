@@ -211,8 +211,7 @@ const uploadDoc = async () => {
   try {
 
     console.log("Uploading:", file.name);
-    console.log("USING RENDER URL");
-    alert("DEPLOYMENT 4382ba5");
+   
     const response = await fetch(
       "https://janai-rvw6.onrender.com/upload-document",
       {
