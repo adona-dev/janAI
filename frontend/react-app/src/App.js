@@ -15,7 +15,6 @@ const [file, setFile] = useState(null);
 const [documentText, setDocumentText] = useState("");
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [menuOpen, setMenuOpen] = useState(null);
-const [loading, setLoading] = useState(false);
 const [messages, setMessages] = useState([
 {
 sender: "ai",
@@ -366,8 +365,7 @@ console.log("TITLE UPDATE ERROR:", error);
   );
 
 }
-   setQuestion("");
-setLoading(true);
+  
 
 try {
 
