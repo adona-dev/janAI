@@ -15,6 +15,7 @@ const [file, setFile] = useState(null);
 const [documentText, setDocumentText] = useState("");
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [menuOpen, setMenuOpen] = useState(null);
+const [loading, setLoading] = useState(false);
 const [messages, setMessages] = useState([
 {
 sender: "ai",
@@ -264,7 +265,7 @@ const sendQuestion = async () => {
 
 
 if (!question.trim()) return;
-
+setLoading(true);
 const userQuestion = question;
 let currentId = conversationId;
 
