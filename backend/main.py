@@ -20,7 +20,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://jan-ai-test.vercel.app/"
+        "https://jan-ai-test.vercel.app",
+        "https://jan-ai-five.vercel.app",
+        "https://jan-epif1mpfe-adona-s-projects.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
