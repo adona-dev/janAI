@@ -13,6 +13,7 @@ const [conversationId, setConversationId] = useState(null);
 const [conversations, setConversations] = useState([]);
 const [file, setFile] = useState(null);
 const [documentText, setDocumentText] = useState("");
+const [uploading, setUploading] = useState(false);
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [menuOpen, setMenuOpen] = useState(null);
 const [messages, setMessages] = useState([
@@ -206,9 +207,11 @@ const uploadDoc = async () => {
   }
 
   const formData = new FormData();
-  formData.append("file", file);
+formData.append("file", file);
 
-  try {
+setUploading(true);
+
+try {
 
     console.log("Uploading:", file.name);
    
@@ -250,13 +253,17 @@ Try asking:
 
   } catch (error) {
 
-    console.error("UPLOAD ERROR:", error);
+  console.error("UPLOAD ERROR:", error);
 
-    alert(
-      "Document upload failed.\nCheck browser console."
-    );
+  alert(
+    "Document upload failed.\nCheck browser console."
+  );
 
-  }
+} finally {
+
+  setUploading(false);
+
+}
 
 };
 
@@ -505,6 +512,9 @@ return ( <div className="app">
   >
     Upload
   </button>
+  {uploading && (
+  <p>⏳ Processing document...</p>
+)}
 
 </div>
 
